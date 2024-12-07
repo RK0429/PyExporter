@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "py-exporter"
+name = "my-exporter"
 version = "0.1.0"
 description = ""
 authors = ["Ryota Kobayashi <s.woods.m.29@gmail.com>"]
