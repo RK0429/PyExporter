@@ -1,10 +1,10 @@
-# My Exporter
+# Py Exporter
 
 **A Python tool to export the contents of a folder into a single text file while respecting `.gitignore` patterns and maintaining the hierarchical structure.**
 
 ## Table of Contents
 
-- [My Exporter](#my-exporter)
+- [Py Exporter](#py-exporter)
   - [Table of Contents](#table-of-contents)
   - [Features](#features)
   - [Installation](#installation)
@@ -25,17 +25,17 @@
 
 ## Installation
 
-You can install `my-exporter` via [PyPI](https://pypi.org/) using `pip`:
+You can install `py-exporter` via [PyPI](https://pypi.org/) using `pip`:
 
 ```bash
-pip install my-exporter
+pip install py-exporter
 ```
 
 Alternatively, you can install it directly from the source:
 
 ```bash
-git clone https://github.com/RK0429/my-exporter.git
-cd my-exporter
+git clone https://github.com/RK0429/py-exporter.git
+cd py-exporter
 pip install .
 ```
 
@@ -43,12 +43,12 @@ pip install .
 
 ### Command-Line Interface
 
-After installation, you can use the `my-exporter` CLI tool to export your folder contents.
+After installation, you can use the `py-exporter` CLI tool to export your folder contents.
 
 **Basic Usage:**
 
 ```bash
-my-exporter --root-dir path/to/project --output-file exported.txt
+py-exporter --root-dir path/to/project --output-file exported.txt
 ```
 
 **Options:**
@@ -60,12 +60,12 @@ my-exporter --root-dir path/to/project --output-file exported.txt
 **Example:**
 
 ```bash
-my-exporter --root-dir ./my_project --output-file project_contents.txt
+py-exporter --root-dir ./my_project --output-file project_contents.txt
 ```
 
 ### Programmatic Usage
 
-You can also use `my-exporter` as a library within your Python projects.
+You can also use `py-exporter` as a library within your Python projects.
 
 **Example:**
 
