@@ -39,14 +39,24 @@ def export_folder_contents(
     spec = load_ignore_patterns(ignore_file)
 
     with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
-        # First, print the directory structure at the top
-        out.write("=== DIRECTORY STRUCTURE ===\n")
+        # Print the directory structure header
+        out.write("================\n")
+        out.write("DIRECTORY STRUCTURE\n")
+        out.write("================\n\n")
+
+        # Print the directory structure
         print_structure(root_dir, out=out, spec=spec)
-        out.write("\n=== FILE CONTENTS ===\n\n")
+
+        out.write("\n")
+
+        # Print the file contents header
+        out.write("================\n")
+        out.write("FILE CONTENTS\n")
+        out.write("================\n\n")
 
         # Now, write the file contents
         for root, dirs, files in os.walk(root_dir):
-            # Filter directories
+            # Filter directories according to .gitignore spec
             dirs[:] = [d for d in dirs if not spec.match_file(os.path.join(root, d))]
 
             for filename in files:
@@ -54,7 +64,11 @@ def export_folder_contents(
                 if spec.match_file(filepath):
                     continue
                 relpath = os.path.relpath(filepath, start=root_dir)
-                out.write(f"### {relpath}\n")
+
+                # Print the file path with '===' on both sides
+                out.write(f"==={relpath}===\n")
+
+                # Write the file content
                 try:
                     with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                         out.write(f.read())
