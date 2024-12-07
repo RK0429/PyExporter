@@ -1,4 +1,4 @@
-# py-exporter/__init__.py
+# my-exporter/__init__.py
 
 from .exporter import export_folder_contents
 from .ignore_handler import load_ignore_patterns
