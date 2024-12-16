@@ -1,6 +1,6 @@
 # My-Exporter
 
-**A Python tool to export the contents of a folder into a single text file while respecting `.gitignore` patterns and maintaining the hierarchical structure.**
+**A Python tool to export the contents of a folder into a single text file while respecting `.gitignore` and optional include patterns, maintaining the hierarchical structure, and optionally handling Jupyter notebook outputs.**
 
 ## Table of Contents
 
@@ -12,6 +12,8 @@
     - [Command-Line Interface](#command-line-interface)
     - [Programmatic Usage](#programmatic-usage)
   - [Configuration](#configuration)
+  - [Jupyter Notebook Outputs](#jupyter-notebook-outputs)
+  - [Testing](#testing)
   - [Contributing](#contributing)
   - [License](#license)
   - [Contact](#contact)
@@ -19,9 +21,11 @@
 ## Features
 
 - **Respect `.gitignore` Patterns:** Automatically excludes files and directories based on your `.gitignore` file.
+- **Include Patterns:** Optionally specify an include file to define patterns of files that should always be included.
 - **Hierarchical Structure:** Maintains the folder hierarchy in the output by using relative file paths as headers.
-- **Customizable Output:** Specify the root directory, output file name, and ignore file.
+- **Customizable Output:** Specify the root directory, output file name, ignore file, and include file.
 - **Handles Non-Text Files:** Gracefully handles non-text or unreadable files by indicating their presence without content.
+- **Jupyter Notebooks:** By default, strips output cells from `.ipynb` files, but you can choose to include them.
 
 ## Installation
 
@@ -43,7 +47,7 @@ pip install .
 
 ### Command-Line Interface
 
-After installation, you can use the `my-exporter` CLI tool to export your folder contents.
+After installation, the `my-exporter` CLI tool is available.
 
 **Basic Usage:**
 
@@ -55,13 +59,35 @@ my-exporter --root-dir path/to/project --output-file exported.txt
 
 - `--root-dir`: Specifies the root directory to start exporting from. Defaults to the current directory (`.`).
 - `--output-file`: Defines the name of the output text file. Defaults to `output.txt`.
-- `--ignore-file`: Specifies a custom ignore file. Defaults to `.gitignore`.
+- `--ignore-file`: Specifies a custom ignore file (e.g., `.gitignore`). Defaults to `.gitignore`.
+- `--include-file`: Specifies a file containing patterns of files to include, even if they might otherwise be ignored.
+- `--include-nb-outputs`: If provided, Jupyter notebook output cells are included in the exported content. By default, they are stripped.
 
-**Example:**
+**Examples:**
 
-```bash
-my-exporter --root-dir ./my_project --output-file project_contents.txt
-```
+1. **Basic export:**
+
+   ```bash
+   my-exporter --root-dir ./my_project --output-file project_contents.txt
+   ```
+
+2. **Using a custom ignore file:**
+
+   ```bash
+   my-exporter --root-dir ./my_project --ignore-file .myignore
+   ```
+
+3. **Using an include file to ensure certain files are always included:**
+
+   ```bash
+   my-exporter --root-dir ./my_project --include-file include_patterns.txt
+   ```
+
+4. **Including Jupyter notebook outputs:**
+
+   ```bash
+   my-exporter --root-dir ./my_project --include-nb-outputs
+   ```
 
 ### Programmatic Usage
 
@@ -75,15 +101,37 @@ from my_exporter import export_folder_contents
 export_folder_contents(
     root_dir='path/to/project',
     output_file='exported_contents.txt',
-    ignore_file='.gitignore'
+    ignore_file='.gitignore',            # Optional
+    include_file='include_patterns.txt', # Optional
+    exclude_notebook_outputs=False       # Set to False to include notebook outputs
 )
 ```
 
 ## Configuration
 
-- **`.gitignore` Support:** The tool uses your `.gitignore` file to determine which files and directories to exclude. Ensure that your `.gitignore` is properly configured in the root directory you are exporting.
-
+- **`.gitignore` Support:** The tool uses your `.gitignore` file to determine which files and directories to exclude. Make sure your `.gitignore` is properly configured in the root directory you are exporting.
 - **Custom Ignore Files:** If you prefer to use a different ignore file, specify it using the `--ignore-file` option.
+- **Include Patterns:** You can specify an `--include-file` that contains patterns of files that should always be included in the export. This can override `.gitignore` exclusions if desired.
+
+## Jupyter Notebook Outputs
+
+By default, `my-exporter` removes output cells from Jupyter notebooks (`.ipynb`) to keep the exported file clean and focused on the code and markdown cells. If you want to include the output cells, simply use the `--include-nb-outputs` option when running the CLI, or set `exclude_notebook_outputs=False` when calling `export_folder_contents` programmatically.
+
+## Testing
+
+This project uses [pytest](https://pytest.org/) for testing.
+
+To run tests:
+
+```bash
+pytest
+```
+
+Ensure that `pytest` is installed, or install using:
+
+```bash
+pip install pytest
+```
 
 ## Contributing
 
@@ -110,7 +158,7 @@ Contributions are welcome! Please follow these steps:
 
 5. **Open a Pull Request:** Describe your changes and submit the pull request.
 
-Please make sure to update tests as appropriate and adhere to the [PEP 8](https://pep8.org/) style guide.
+Please update tests as appropriate and adhere to the [PEP 8](https://pep8.org/) style guide.
 
 ## License
 
