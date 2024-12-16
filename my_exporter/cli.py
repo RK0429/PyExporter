@@ -9,6 +9,7 @@ def main():
     parser.add_argument('--root-dir', default='.', help='Root directory to start from')
     parser.add_argument('--output-file', default='output.txt', help='Output file name')
     parser.add_argument('--ignore-file', default='.gitignore', help='Ignore file pattern list')
+    parser.add_argument('--include-file', help='Include file pattern list')  # New argument
     parser.add_argument(
         '--include-nb-outputs',
         action='store_true',
@@ -20,5 +21,6 @@ def main():
         root_dir=args.root_dir,
         output_file=args.output_file,
         ignore_file=args.ignore_file,
+        include_file=args.include_file,  # Pass include_file
         exclude_notebook_outputs=not args.include_nb_outputs  # Invert the flag
     )
