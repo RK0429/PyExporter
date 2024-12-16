@@ -2,7 +2,7 @@
 
 import os
 import json
-from .ignore_handler import load_ignore_patterns
+from .ignore_handler import load_ignore_patterns, load_include_patterns
 
 
 def strip_notebook_outputs(nb_content):
@@ -23,10 +23,32 @@ def strip_notebook_outputs(nb_content):
         return nb_content
 
 
-def print_structure(root_dir='.', out=None, prefix='', spec=None):
+def should_include(path, ignore_spec, include_spec):
+    """
+    Determine whether a file or directory should be included based on ignore and include specs.
+
+    Parameters:
+    - path (str): The file or directory path.
+    - ignore_spec (PathSpec or None): Spec for ignored patterns.
+    - include_spec (PathSpec or None): Spec for included patterns.
+
+    Returns:
+    - bool: True if the path should be included, False otherwise.
+    """
+    if include_spec and not ignore_spec:
+        return include_spec.match_file(path)
+    elif ignore_spec and not include_spec:
+        return not ignore_spec.match_file(path)
+    elif include_spec and ignore_spec:
+        return include_spec.match_file(path) or not ignore_spec.match_file(path)
+    else:
+        return True  # No specs provided; include everything
+
+
+def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include_spec=None):
     """
     Recursively print a "tree" structure of directories and files.
-    This function filters out ignored files/directories using the spec.
+    This function filters out ignored files/directories using the specs.
     """
     try:
         entries = sorted(os.listdir(root_dir))
@@ -34,33 +56,34 @@ def print_structure(root_dir='.', out=None, prefix='', spec=None):
         out.write(prefix + "└── [Permission Denied]\n")
         return
 
-    # Filter out ignored entries
+    # Filter entries based on include and ignore specs
     entries = [
         e for e in entries
-        if not spec.match_file(os.path.join(root_dir, e))
+        if should_include(os.path.join(root_dir, e), ignore_spec, include_spec)
     ]
 
     for i, entry in enumerate(entries):
         path = os.path.join(root_dir, entry)
         # Choose the connector symbol based on position
-        connector = '├── ' if i < len(entries)-1 else '└── '
+        connector = '├── ' if i < len(entries) - 1 else '└── '
 
         # Write directory or file name
         out.write(prefix + connector + entry + "\n")
 
         if os.path.isdir(path):
             # Update prefix for child entries
-            if i < len(entries)-1:
+            if i < len(entries) - 1:
                 new_prefix = prefix + "│   "
             else:
                 new_prefix = prefix + "    "
-            print_structure(path, out=out, prefix=new_prefix, spec=spec)
+            print_structure(path, out=out, prefix=new_prefix, ignore_spec=ignore_spec, include_spec=include_spec)
 
 
 def export_folder_contents(
     root_dir='.',
     output_file='output.txt',
     ignore_file='.gitignore',
+    include_file=None,  # New parameter
     exclude_notebook_outputs=True  # New parameter to control notebook output exclusion
 ):
     """
@@ -71,9 +94,11 @@ def export_folder_contents(
     - root_dir (str): Root directory to start exporting from.
     - output_file (str): Name of the output text file.
     - ignore_file (str): Path to the ignore file (e.g., .gitignore).
+    - include_file (str or None): Path to the include file.
     - exclude_notebook_outputs (bool): If True, excludes output cells from .ipynb files.
     """
-    spec = load_ignore_patterns(ignore_file)
+    ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
+    include_spec = load_include_patterns(include_file) if include_file else None
 
     with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
         # Print the directory structure header
@@ -82,10 +107,9 @@ def export_folder_contents(
         out.write("================\n\n")
 
         # Print the directory structure
-        print_structure(root_dir, out=out, spec=spec)
+        print_structure(root_dir, out=out, ignore_spec=ignore_spec, include_spec=include_spec)
 
         out.write("\n")
-
         # Print the file contents header
         out.write("================\n")
         out.write("FILE CONTENTS\n")
@@ -93,13 +117,17 @@ def export_folder_contents(
 
         # Now, write the file contents
         for root, dirs, files in os.walk(root_dir):
-            # Filter directories according to .gitignore spec
-            dirs[:] = [d for d in dirs if not spec.match_file(os.path.join(root, d))]
+            # Modify dirs in-place based on include and ignore specs
+            dirs[:] = [
+                d for d in dirs
+                if should_include(os.path.join(root, d), ignore_spec, include_spec)
+            ]
 
             for filename in files:
                 filepath = os.path.join(root, filename)
-                if spec.match_file(filepath):
-                    continue
+                if not should_include(filepath, ignore_spec, include_spec):
+                    continue  # Skip files that should not be included
+
                 relpath = os.path.relpath(filepath, start=root_dir)
 
                 # Print the file path with '===' on both sides
