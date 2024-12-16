@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "my-exporter"
-version = "0.2.1"
+version = "0.3.0"
 description = ""
 authors = ["Ryota Kobayashi <s.woods.m.29@gmail.com>"]
 readme = "README.md"
