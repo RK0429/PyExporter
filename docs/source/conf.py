@@ -19,7 +19,6 @@ extensions = [
     'sphinx.ext.napoleon',
 ]
 
-
 templates_path = ['_templates']
 exclude_patterns = []
 
