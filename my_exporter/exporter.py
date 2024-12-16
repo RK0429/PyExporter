@@ -45,10 +45,19 @@ def should_include(path, ignore_spec, include_spec):
         return True  # No specs provided; include everything
 
 
-def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include_spec=None):
+def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include_spec=None, exclude_files=None):
     """
     Recursively print a "tree" structure of directories and files.
-    This function filters out ignored files/directories using the specs.
+    This function filters out ignored files/directories using the specs
+    and excludes specific files if provided.
+
+    Parameters:
+    - root_dir (str): The directory to print the structure of.
+    - out (file object): The file object to write the output to.
+    - prefix (str): The prefix string for the current level (used for formatting).
+    - ignore_spec (PathSpec or None): Spec for ignored patterns.
+    - include_spec (PathSpec or None): Spec for included patterns.
+    - exclude_files (set or None): Set of absolute file paths to exclude from the structure.
     """
     try:
         entries = sorted(os.listdir(root_dir))
@@ -64,6 +73,12 @@ def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include
 
     for i, entry in enumerate(entries):
         path = os.path.join(root_dir, entry)
+        abs_path = os.path.abspath(path)
+
+        # Exclude specific files from the directory structure
+        if exclude_files and abs_path in exclude_files:
+            continue
+
         # Choose the connector symbol based on position
         connector = '├── ' if i < len(entries) - 1 else '└── '
 
@@ -76,7 +91,14 @@ def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include
                 new_prefix = prefix + "│   "
             else:
                 new_prefix = prefix + "    "
-            print_structure(path, out=out, prefix=new_prefix, ignore_spec=ignore_spec, include_spec=include_spec)
+            print_structure(
+                path,
+                out=out,
+                prefix=new_prefix,
+                ignore_spec=ignore_spec,
+                include_spec=include_spec,
+                exclude_files=exclude_files
+            )
 
 
 def export_folder_contents(
@@ -100,14 +122,27 @@ def export_folder_contents(
     ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
     include_spec = load_include_patterns(include_file) if include_file else None
 
+    # Prepare a set of absolute paths to exclude from the directory structure and file contents
+    exclude_files = set()
+    if ignore_file:
+        exclude_files.add(os.path.abspath(ignore_file))
+    if include_file:
+        exclude_files.add(os.path.abspath(include_file))
+
     with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
         # Print the directory structure header
         out.write("================\n")
         out.write("DIRECTORY STRUCTURE\n")
         out.write("================\n\n")
 
-        # Print the directory structure
-        print_structure(root_dir, out=out, ignore_spec=ignore_spec, include_spec=include_spec)
+        # Print the directory structure, excluding ignore_file and include_file
+        print_structure(
+            root_dir,
+            out=out,
+            ignore_spec=ignore_spec,
+            include_spec=include_spec,
+            exclude_files=exclude_files  # Pass the set of files to exclude
+        )
 
         out.write("\n")
         # Print the file contents header
@@ -125,6 +160,14 @@ def export_folder_contents(
 
             for filename in files:
                 filepath = os.path.join(root, filename)
+                abs_filepath = os.path.abspath(filepath)
+
+                # Skip the ignore and include files themselves so they don't appear in output
+                if ignore_file and abs_filepath == os.path.abspath(ignore_file):
+                    continue
+                if include_file and abs_filepath == os.path.abspath(include_file):
+                    continue
+
                 if not should_include(filepath, ignore_spec, include_spec):
                     continue  # Skip files that should not be included
 
