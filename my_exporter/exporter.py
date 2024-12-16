@@ -23,31 +23,24 @@ def strip_notebook_outputs(nb_content):
         return nb_content
 
 
-def should_include(path, root_dir, ignore_spec, include_spec):
+def should_include(path, ignore_spec, include_spec):
     """
     Determine whether a file or directory should be included based on ignore and include specs.
 
     Parameters:
-    - path (str): The absolute file or directory path.
-    - root_dir (str): The root directory from which relative paths are calculated.
+    - path (str): The file or directory path.
     - ignore_spec (PathSpec or None): Spec for ignored patterns.
     - include_spec (PathSpec or None): Spec for included patterns.
 
     Returns:
     - bool: True if the path should be included, False otherwise.
     """
-    # Compute the relative path from the root_dir
-    relative_path = os.path.relpath(path, start=root_dir)
-
-    # Normalize path separators to match PathSpec expectations
-    relative_path = relative_path.replace(os.path.sep, '/')
-
     if include_spec and not ignore_spec:
-        return include_spec.match_file(relative_path)
+        return include_spec.match_file(path)
     elif ignore_spec and not include_spec:
-        return not ignore_spec.match_file(relative_path)
+        return not ignore_spec.match_file(path)
     elif include_spec and ignore_spec:
-        return include_spec.match_file(relative_path) or not ignore_spec.match_file(relative_path)
+        return include_spec.match_file(path) or not ignore_spec.match_file(path)
     else:
         return True  # No specs provided; include everything
 
@@ -75,7 +68,7 @@ def print_structure(root_dir='.', out=None, prefix='', ignore_spec=None, include
     # Filter entries based on include and ignore specs
     entries = [
         e for e in entries
-        if should_include(os.path.join(root_dir, e), root_dir, ignore_spec, include_spec)
+        if should_include(os.path.join(root_dir, e), ignore_spec, include_spec)
     ]
 
     for i, entry in enumerate(entries):
@@ -162,7 +155,7 @@ def export_folder_contents(
             # Modify dirs in-place based on include and ignore specs
             dirs[:] = [
                 d for d in dirs
-                if should_include(os.path.join(root, d), root_dir, ignore_spec, include_spec)
+                if should_include(os.path.join(root, d), ignore_spec, include_spec)
             ]
 
             for filename in files:
@@ -175,12 +168,10 @@ def export_folder_contents(
                 if include_file and abs_filepath == os.path.abspath(include_file):
                     continue
 
-                if not should_include(filepath, root_dir, ignore_spec, include_spec):
+                if not should_include(filepath, ignore_spec, include_spec):
                     continue  # Skip files that should not be included
 
                 relpath = os.path.relpath(filepath, start=root_dir)
-                # Normalize path separators to match PathSpec expectations
-                relpath = relpath.replace(os.path.sep, '/')
 
                 # Print the file path with '===' on both sides
                 out.write(f"==={relpath}===\n")
