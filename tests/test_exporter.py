@@ -30,6 +30,7 @@ class TestExporter(unittest.TestCase):
         export_folder_contents(
             root_dir=self.test_dir,
             output_file=output_file,
+            ignore_file=None,
             include_file=os.path.join(self.test_dir, 'include_patterns.txt')
         )
         with open(output_file, 'r') as f:
