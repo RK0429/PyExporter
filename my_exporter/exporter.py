@@ -214,7 +214,6 @@ def export_folder_contents(
         convert_notebook_to_py (bool, optional): If True, converts .ipynb files to .py format. Defaults to False.
 
     Raises:
-        FileNotFoundError: If the specified ignore or include files do not exist.
         IOError: If an I/O error occurs during file operations.
 
     Example:
@@ -229,6 +228,12 @@ def export_folder_contents(
                 convert_notebook_to_py=True
             )
     """
+    # Check if the ignore_file exists; if not, assign None and issue a warning
+    if ignore_file is not None and not os.path.isfile(ignore_file):
+        print(f"Warning: Ignore file '{ignore_file}' does not exist. Proceeding without ignore file.")
+        ignore_file = None
+
+    # Now safely attempt to load patterns, ignoring the file if it's None or doesn't exist
     ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
     include_spec = load_include_patterns(include_file) if include_file else None
 
