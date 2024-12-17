@@ -9,7 +9,8 @@ from .ignore_handler import load_ignore_patterns, load_include_patterns
 
 
 def strip_notebook_outputs(nb_content: str) -> str:
-    """Remove all output cells from a Jupyter notebook's JSON content.
+    """
+    Remove all output cells from a Jupyter notebook's JSON content.
 
     Args:
         nb_content (str): JSON string content of the Jupyter notebook.
@@ -18,7 +19,9 @@ def strip_notebook_outputs(nb_content: str) -> str:
         str: JSON string of the notebook with output cells removed.
 
     Example:
-        stripped_nb = strip_notebook_outputs(original_nb_json)
+        .. code-block:: python
+
+            stripped_nb = strip_notebook_outputs(original_nb_json)
     """
     try:
         nb = json.loads(nb_content)
@@ -33,7 +36,8 @@ def strip_notebook_outputs(nb_content: str) -> str:
 
 
 def convert_nb_to_py(nb_stripped_json: str) -> str:
-    """Convert a stripped Jupyter notebook JSON into a Python (.py) file representation.
+    """
+    Convert a stripped Jupyter notebook JSON into a Python (.py) file representation.
 
     - **Code cells**: Included as-is.
     - **Markdown cells**: Commented out.
@@ -46,7 +50,9 @@ def convert_nb_to_py(nb_stripped_json: str) -> str:
         str: Python-compatible text representation of the notebook.
 
     Example:
-        py_content = convert_nb_to_py(stripped_nb_json)
+        .. code-block:: python
+
+            py_content = convert_nb_to_py(stripped_nb_json)
     """
     try:
         nb = json.loads(nb_stripped_json)
@@ -85,7 +91,8 @@ def should_include(
     ignore_spec: Optional[PathSpec],
     include_spec: Optional[PathSpec]
 ) -> bool:
-    """Determine whether a file or directory should be included based on ignore and include specifications.
+    """
+    Determine whether a file or directory should be included based on ignore and include specifications.
 
     Args:
         path (str): The file or directory path.
@@ -96,7 +103,9 @@ def should_include(
         bool: True if the path should be included, False otherwise.
 
     Example:
-        include = should_include(file_path, ignore_spec, include_spec)
+        .. code-block:: python
+
+            include = should_include(file_path, ignore_spec, include_spec)
     """
     if include_spec and not ignore_spec:
         return include_spec.match_file(path)
@@ -116,7 +125,8 @@ def print_structure(
     include_spec: Optional[PathSpec] = None,
     exclude_files: Optional[Set[str]] = None
 ) -> None:
-    """Recursively print a "tree" structure of directories and files.
+    """
+    Recursively print a "tree" structure of directories and files.
 
     This function filters out ignored files/directories using the provided specifications
     and excludes specific files if provided.
@@ -133,7 +143,9 @@ def print_structure(
         None
 
     Example:
-        print_structure('/path/to/project', out=output_file, ignore_spec=ignore_spec, include_spec=include_spec)
+        .. code-block:: python
+
+            print_structure('/path/to/project', out=output_file, ignore_spec=ignore_spec, include_spec=include_spec)
     """
     if out is None:
         import sys
@@ -189,7 +201,8 @@ def export_folder_contents(
     exclude_notebook_outputs: bool = True,
     convert_notebook_to_py: bool = False
 ) -> None:
-    """Export the contents of a folder into a single text file while respecting
+    """
+    Export the contents of a folder into a single text file while respecting
     ignore patterns and optionally excluding or converting Jupyter notebook outputs.
 
     Args:
@@ -205,14 +218,16 @@ def export_folder_contents(
         IOError: If an I/O error occurs during file operations.
 
     Example:
-        export_folder_contents(
-            root_dir='path/to/project',
-            output_file='exported_contents.txt',
-            ignore_file='.gitignore',
-            include_file='include_patterns.txt',
-            exclude_notebook_outputs=False,
-            convert_notebook_to_py=True
-        )
+        .. code-block:: python
+
+            export_folder_contents(
+                root_dir='path/to/project',
+                output_file='exported_contents.txt',
+                ignore_file='.gitignore',
+                include_file='include_patterns.txt',
+                exclude_notebook_outputs=False,
+                convert_notebook_to_py=True
+            )
     """
     ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
     include_spec = load_include_patterns(include_file) if include_file else None
