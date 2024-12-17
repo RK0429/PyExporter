@@ -9,6 +9,7 @@ readme = "README.md"
 python = "^3.11"
 pathspec = "^0.12.1"
 pytest = "^8.3.4"
+sphinx-rtd-theme = "^3.0.2"
 
 [tool.poetry.scripts]
 my-exporter = "my_exporter.cli:main"
