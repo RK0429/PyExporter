@@ -6,7 +6,8 @@ from .exporter import export_folder_contents
 
 
 def main() -> None:
-    """Entry point for the folder contents exporter CLI.
+    """
+    Entry point for the folder contents exporter CLI.
 
     This function parses command-line arguments and initiates the export process
     by invoking the `export_folder_contents` function with the appropriate parameters.
@@ -18,9 +19,10 @@ def main() -> None:
         SystemExit: If argument parsing fails or if an error occurs during export.
 
     Example:
-        ```bash
-        python cli.py --root-dir ./my_project --output-file project_export.txt --ignore-file .gitignore --include-file include.txt --export-nb-as-py
-        """
+        .. code-block:: bash
+
+            python cli.py --root-dir ./my_project --output-file project_export.txt --ignore-file .gitignore --include-file include.txt --export-nb-as-py
+    """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description='Export folder contents.')
 
     parser.add_argument(
