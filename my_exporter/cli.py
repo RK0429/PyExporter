@@ -5,6 +5,12 @@ import argparse
 from .exporter import export_folder_contents
 
 
+def none_or_str(value):
+    if value == 'None':
+        return None
+    return value
+
+
 def main() -> None:
     """
     Entry point for the folder contents exporter CLI.
