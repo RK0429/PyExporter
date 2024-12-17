@@ -8,7 +8,7 @@
 
 import os
 import sys
-sys.path.insert(0, os.path.abspath('..'))  # Assuming docs/ is inside the project root
+sys.path.insert(0, os.path.abspath('../..'))  # Assuming docs/ is inside the project root
 
 project = 'my-exporter'
 copyright = '2024, Ryota Kobayashi'
