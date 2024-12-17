@@ -45,7 +45,7 @@ def main() -> None:
     )
     parser.add_argument(
         '--ignore-file',
-        type=str,
+        type=none_or_str,
         default='.gitignore',
         help='Path to the ignore file pattern list.'
     )
