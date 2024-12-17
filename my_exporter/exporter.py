@@ -7,20 +7,69 @@ from .ignore_handler import load_ignore_patterns, load_include_patterns
 
 def strip_notebook_outputs(nb_content):
     """
-    Given the JSON string content of a Jupyter notebook, remove output cells
-    and return the modified JSON string.
+    Remove all output cells from a Jupyter notebook's JSON content.
+
+    Parameters:
+    - nb_content (str): JSON string content of the Jupyter notebook.
+
+    Returns:
+    - str: JSON string of the notebook with output cells removed.
     """
     try:
         nb = json.loads(nb_content)
-        # Jupyter notebooks typically have a 'cells' field that is a list of cells.
         for cell in nb.get('cells', []):
             if cell.get('cell_type') == 'code':
-                cell['outputs'] = []  # Clear outputs
+                cell['outputs'] = []
                 cell['execution_count'] = None
         return json.dumps(nb, indent=2, ensure_ascii=False)
     except json.JSONDecodeError:
         # If JSON is invalid, return the original content
         return nb_content
+
+
+def convert_nb_to_py(nb_stripped_json):
+    """
+    Convert a stripped Jupyter notebook JSON into a .py file representation.
+    - Code cells: written as is.
+    - Markdown cells: commented out.
+    - Other cell types: commented out or indicated as unsupported.
+
+    Parameters:
+    - nb_stripped_json (str): JSON string of the notebook with outputs stripped.
+
+    Returns:
+    - str: Python-compatible text representation of the notebook.
+    """
+    try:
+        nb = json.loads(nb_stripped_json)
+    except json.JSONDecodeError:
+        # If invalid JSON, return the original content as a fallback
+        return nb_stripped_json
+
+    lines = []
+    for cell in nb.get('cells', []):
+        cell_type = cell.get('cell_type', '')
+        source = cell.get('source', [])
+        if cell_type == 'markdown':
+            # Comment out markdown cells
+            lines.append("# === Markdown Cell ===")
+            for line in source:
+                lines.append("# " + line.rstrip('\n'))
+            lines.append("")  # Blank line after cell
+        elif cell_type == 'code':
+            # Code cells: just include the source code
+            lines.append("# === Code Cell ===")
+            for line in source:
+                lines.append(line.rstrip('\n'))
+            lines.append("")  # Blank line after cell
+        else:
+            # For other cell types, indicate unsupported cells
+            lines.append(f"# === {cell_type.capitalize()} Cell (Unsupported) ===")
+            for line in source:
+                lines.append("# " + line.rstrip('\n'))
+            lines.append("")
+
+    return "\n".join(lines)
 
 
 def should_include(path, ignore_spec, include_spec):
@@ -105,12 +154,13 @@ def export_folder_contents(
     root_dir='.',
     output_file='output.txt',
     ignore_file='.gitignore',
-    include_file=None,  # New parameter
-    exclude_notebook_outputs=True  # New parameter to control notebook output exclusion
+    include_file=None,            # New parameter
+    exclude_notebook_outputs=True,  # Existing parameter
+    convert_notebook_to_py=False    # New parameter to control notebook conversion
 ):
     """
     Export the contents of a folder into a single text file while respecting
-    .gitignore patterns and optionally excluding Jupyter notebook outputs.
+    .gitignore patterns and optionally excluding or converting Jupyter notebook outputs.
 
     Parameters:
     - root_dir (str): Root directory to start exporting from.
@@ -118,6 +168,7 @@ def export_folder_contents(
     - ignore_file (str): Path to the ignore file (e.g., .gitignore).
     - include_file (str or None): Path to the include file.
     - exclude_notebook_outputs (bool): If True, excludes output cells from .ipynb files.
+    - convert_notebook_to_py (bool): If True, converts .ipynb files to .py format.
     """
     ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
     include_spec = load_include_patterns(include_file) if include_file else None
@@ -178,12 +229,20 @@ def export_folder_contents(
 
                 # Write the file content
                 try:
-                    if exclude_notebook_outputs and filename.endswith('.ipynb'):
-                        # Handle notebook files specially
+                    if filename.endswith('.ipynb'):
                         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                             nb_content = f.read()
+                        # Always strip outputs when converting to .py
                         stripped_content = strip_notebook_outputs(nb_content)
-                        out.write(stripped_content)
+                        if convert_notebook_to_py:
+                            py_content = convert_nb_to_py(stripped_content)
+                            out.write(py_content)
+                        elif not exclude_notebook_outputs:
+                            # Include stripped JSON if not converting
+                            out.write(stripped_content)
+                        # If exclude_notebook_outputs is True and not converting, do not write content
+                        else:
+                            out.write("[Notebook outputs are excluded and not converted to .py]\n")
                     else:
                         # Regular files
                         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
