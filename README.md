@@ -13,6 +13,7 @@
     - [Programmatic Usage](#programmatic-usage)
   - [Configuration](#configuration)
   - [Jupyter Notebook Outputs](#jupyter-notebook-outputs)
+  - [Converting Notebooks to Python](#converting-notebooks-to-python)
   - [Testing](#testing)
   - [Contributing](#contributing)
   - [License](#license)
@@ -22,10 +23,10 @@
 
 - **Respect `.gitignore` Patterns:** Automatically excludes files and directories based on your `.gitignore` file.
 - **Include Patterns:** Optionally specify an include file to define patterns of files that should always be included.
-- **Hierarchical Structure:** Maintains the folder hierarchy in the output by using relative file paths as headers.
+- **Hierarchical Structure:** Maintains the folder hierarchy in the exported output by using relative file paths as headers.
 - **Customizable Output:** Specify the root directory, output file name, ignore file, and include file.
 - **Handles Non-Text Files:** Gracefully handles non-text or unreadable files by indicating their presence without content.
-- **Jupyter Notebooks:** By default, strips output cells from `.ipynb` files, but you can choose to include them.
+- **Jupyter Notebooks:** By default, strips output cells from `.ipynb` files. You can choose to include them, or convert notebooks entirely to `.py` format while omitting all outputs.
 
 ## Installation
 
@@ -62,6 +63,7 @@ my-exporter --root-dir path/to/project --output-file exported.txt
 - `--ignore-file`: Specifies a custom ignore file (e.g., `.gitignore`). Defaults to `.gitignore`.
 - `--include-file`: Specifies a file containing patterns of files to include, even if they might otherwise be ignored.
 - `--include-nb-outputs`: If provided, Jupyter notebook output cells are included in the exported content. By default, they are stripped.
+- `--export-nb-as-py`: If provided, Jupyter notebooks (`.ipynb`) are converted into Python files (`.py`-like format) with all outputs omitted.
 
 **Examples:**
 
@@ -89,6 +91,12 @@ my-exporter --root-dir path/to/project --output-file exported.txt
    my-exporter --root-dir ./my_project --include-nb-outputs
    ```
 
+5. **Converting Jupyter notebooks to Python files (excluding outputs):**
+
+   ```bash
+   my-exporter --root-dir ./my_project --export-nb-as-py
+   ```
+
 ### Programmatic Usage
 
 You can also use `my-exporter` as a library within your Python projects.
@@ -103,19 +111,30 @@ export_folder_contents(
     output_file='exported_contents.txt',
     ignore_file='.gitignore',            # Optional
     include_file='include_patterns.txt', # Optional
-    exclude_notebook_outputs=False       # Set to False to include notebook outputs
+    exclude_notebook_outputs=False,      # Set to False to include notebook outputs
+    convert_notebook_to_py=False         # Set to True to convert notebooks to .py format
 )
 ```
 
 ## Configuration
 
-- **`.gitignore` Support:** The tool uses your `.gitignore` file to determine which files and directories to exclude. Make sure your `.gitignore` is properly configured in the root directory you are exporting.
+- **`.gitignore` Support:** The tool uses your `.gitignore` file to determine which files and directories to exclude. Ensure your `.gitignore` is properly configured in the root directory you are exporting.
 - **Custom Ignore Files:** If you prefer to use a different ignore file, specify it using the `--ignore-file` option.
-- **Include Patterns:** You can specify an `--include-file` that contains patterns of files that should always be included in the export. This can override `.gitignore` exclusions if desired.
+- **Include Patterns:** You can specify an `--include-file` containing patterns of files that should always be included in the export. These patterns can override `.gitignore` exclusions if desired.
 
 ## Jupyter Notebook Outputs
 
-By default, `my-exporter` removes output cells from Jupyter notebooks (`.ipynb`) to keep the exported file clean and focused on the code and markdown cells. If you want to include the output cells, simply use the `--include-nb-outputs` option when running the CLI, or set `exclude_notebook_outputs=False` when calling `export_folder_contents` programmatically.
+By default, `my-exporter` removes output cells from Jupyter notebooks (`.ipynb`) to keep the exported file clean and focused on code and markdown cells. If you want to include the output cells, use the `--include-nb-outputs` option or set `exclude_notebook_outputs=False` programmatically.
+
+## Converting Notebooks to Python
+
+If you use `--export-nb-as-py`, notebooks are converted into a `.py`-style format:
+
+- **Code cells** are included as plain Python code.
+- **Markdown cells** are included as commented-out text.
+- **No output cells** are included, regardless of the `--include-nb-outputs` setting.
+
+This option is useful if you want a clean, output-free representation of your notebooks as Python scripts.
 
 ## Testing
 
@@ -127,7 +146,7 @@ To run tests:
 pytest
 ```
 
-Ensure that `pytest` is installed, or install using:
+Make sure `pytest` is installed, or install it using:
 
 ```bash
 pip install pytest
