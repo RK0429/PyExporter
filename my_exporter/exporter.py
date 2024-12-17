@@ -232,17 +232,19 @@ def export_folder_contents(
                     if filename.endswith('.ipynb'):
                         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                             nb_content = f.read()
-                        # Always strip outputs when converting to .py
-                        stripped_content = strip_notebook_outputs(nb_content)
                         if convert_notebook_to_py:
+                            # When converting to .py, always strip outputs
+                            stripped_content = strip_notebook_outputs(nb_content)
                             py_content = convert_nb_to_py(stripped_content)
                             out.write(py_content)
-                        elif not exclude_notebook_outputs:
-                            # Include stripped JSON if not converting
-                            out.write(stripped_content)
-                        # If exclude_notebook_outputs is True and not converting, do not write content
                         else:
-                            out.write("[Notebook outputs are excluded and not converted to .py]\n")
+                            if exclude_notebook_outputs:
+                                # Exclude outputs by stripping them
+                                stripped_content = strip_notebook_outputs(nb_content)
+                                out.write(stripped_content)
+                            else:
+                                # Include original notebook content with outputs
+                                out.write(nb_content)
                     else:
                         # Regular files
                         with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
