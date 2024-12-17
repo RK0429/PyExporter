@@ -9,14 +9,16 @@ from .ignore_handler import load_ignore_patterns, load_include_patterns
 
 
 def strip_notebook_outputs(nb_content: str) -> str:
-    """
-    Remove all output cells from a Jupyter notebook's JSON content.
+    """Remove all output cells from a Jupyter notebook's JSON content.
 
-    Parameters:
-    - nb_content (str): JSON string content of the Jupyter notebook.
+    Args:
+        nb_content (str): JSON string content of the Jupyter notebook.
 
     Returns:
-    - str: JSON string of the notebook with output cells removed.
+        str: JSON string of the notebook with output cells removed.
+
+    Example:
+        stripped_nb = strip_notebook_outputs(original_nb_json)
     """
     try:
         nb = json.loads(nb_content)
@@ -31,18 +33,20 @@ def strip_notebook_outputs(nb_content: str) -> str:
 
 
 def convert_nb_to_py(nb_stripped_json: str) -> str:
-    """
-    Convert a stripped Jupyter notebook JSON into a Python (.py) file representation.
+    """Convert a stripped Jupyter notebook JSON into a Python (.py) file representation.
 
-    - Code cells: Included as-is.
-    - Markdown cells: Commented out.
-    - Other cell types: Commented out with an indication of unsupported type.
+    - **Code cells**: Included as-is.
+    - **Markdown cells**: Commented out.
+    - **Other cell types**: Commented out with an indication of unsupported type.
 
-    Parameters:
-    - nb_stripped_json (str): JSON string of the notebook with outputs stripped.
+    Args:
+        nb_stripped_json (str): JSON string of the notebook with outputs stripped.
 
     Returns:
-    - str: Python-compatible text representation of the notebook.
+        str: Python-compatible text representation of the notebook.
+
+    Example:
+        py_content = convert_nb_to_py(stripped_nb_json)
     """
     try:
         nb = json.loads(nb_stripped_json)
@@ -81,16 +85,18 @@ def should_include(
     ignore_spec: Optional[PathSpec],
     include_spec: Optional[PathSpec]
 ) -> bool:
-    """
-    Determine whether a file or directory should be included based on ignore and include specifications.
+    """Determine whether a file or directory should be included based on ignore and include specifications.
 
-    Parameters:
-    - path (str): The file or directory path.
-    - ignore_spec (Optional[PathSpec]): Spec for ignored patterns.
-    - include_spec (Optional[PathSpec]): Spec for included patterns.
+    Args:
+        path (str): The file or directory path.
+        ignore_spec (Optional[PathSpec]): Spec for ignored patterns.
+        include_spec (Optional[PathSpec]): Spec for included patterns.
 
     Returns:
-    - bool: True if the path should be included, False otherwise.
+        bool: True if the path should be included, False otherwise.
+
+    Example:
+        include = should_include(file_path, ignore_spec, include_spec)
     """
     if include_spec and not ignore_spec:
         return include_spec.match_file(path)
@@ -110,19 +116,24 @@ def print_structure(
     include_spec: Optional[PathSpec] = None,
     exclude_files: Optional[Set[str]] = None
 ) -> None:
-    """
-    Recursively print a "tree" structure of directories and files.
+    """Recursively print a "tree" structure of directories and files.
 
     This function filters out ignored files/directories using the provided specifications
     and excludes specific files if provided.
 
-    Parameters:
-    - root_dir (str): The directory to print the structure of.
-    - out (Optional[TextIO]): The file object to write the output to. Defaults to standard output.
-    - prefix (str): The prefix string for the current level (used for formatting).
-    - ignore_spec (Optional[PathSpec]): Spec for ignored patterns.
-    - include_spec (Optional[PathSpec]): Spec for included patterns.
-    - exclude_files (Optional[Set[str]]): Set of absolute file paths to exclude from the structure.
+    Args:
+        root_dir (str, optional): The directory to print the structure of. Defaults to '.'.
+        out (Optional[TextIO], optional): The file object to write the output to. Defaults to standard output.
+        prefix (str, optional): The prefix string for the current level (used for formatting). Defaults to ''.
+        ignore_spec (Optional[PathSpec], optional): Spec for ignored patterns. Defaults to None.
+        include_spec (Optional[PathSpec], optional): Spec for included patterns. Defaults to None.
+        exclude_files (Optional[Set[str]], optional): Set of absolute file paths to exclude from the structure. Defaults to None.
+
+    Raises:
+        None
+
+    Example:
+        print_structure('/path/to/project', out=output_file, ignore_spec=ignore_spec, include_spec=include_spec)
     """
     if out is None:
         import sys
@@ -178,17 +189,30 @@ def export_folder_contents(
     exclude_notebook_outputs: bool = True,
     convert_notebook_to_py: bool = False
 ) -> None:
-    """
-    Export the contents of a folder into a single text file while respecting
+    """Export the contents of a folder into a single text file while respecting
     ignore patterns and optionally excluding or converting Jupyter notebook outputs.
 
-    Parameters:
-    - root_dir (str): Root directory to start exporting from.
-    - output_file (str): Name of the output text file.
-    - ignore_file (Optional[str]): Path to the ignore file (e.g., .gitignore). Defaults to '.gitignore'.
-    - include_file (Optional[str]): Path to the include file. Defaults to None.
-    - exclude_notebook_outputs (bool): If True, excludes output cells from .ipynb files.
-    - convert_notebook_to_py (bool): If True, converts .ipynb files to .py format.
+    Args:
+        root_dir (str, optional): Root directory to start exporting from. Defaults to '.'.
+        output_file (str, optional): Name of the output text file. Defaults to 'output.txt'.
+        ignore_file (Optional[str], optional): Path to the ignore file (e.g., .gitignore). Defaults to '.gitignore'.
+        include_file (Optional[str], optional): Path to the include file. Defaults to None.
+        exclude_notebook_outputs (bool, optional): If True, excludes output cells from .ipynb files. Defaults to True.
+        convert_notebook_to_py (bool, optional): If True, converts .ipynb files to .py format. Defaults to False.
+
+    Raises:
+        FileNotFoundError: If the specified ignore or include files do not exist.
+        IOError: If an I/O error occurs during file operations.
+
+    Example:
+        export_folder_contents(
+            root_dir='path/to/project',
+            output_file='exported_contents.txt',
+            ignore_file='.gitignore',
+            include_file='include_patterns.txt',
+            exclude_notebook_outputs=False,
+            convert_notebook_to_py=True
+        )
     """
     ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
     include_spec = load_include_patterns(include_file) if include_file else None
