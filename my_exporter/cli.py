@@ -6,60 +6,56 @@ from .exporter import export_folder_contents
 
 
 def main() -> None:
-    """
-    Entry point for the folder contents exporter CLI.
+    """Entry point for the folder contents exporter CLI.
 
     This function parses command-line arguments and initiates the export process
     by invoking the `export_folder_contents` function with the appropriate parameters.
 
-    Command-Line Arguments:
-    - `--root-dir` (str, optional): Root directory to start exporting from. Defaults to the current directory (`.`).
-    - `--output-file` (str, optional): Name of the output text file. Defaults to `'output.txt'`.
-    - `--ignore-file` (str, optional): Path to the ignore file (e.g., `.gitignore`). Defaults to `'.gitignore'`.
-    - `--include-file` (str, optional): Path to the include file. If not provided, no include patterns are applied.
-    - `--include-nb-outputs` (bool, flag): If set, includes output cells in Jupyter notebooks. This flag is ignored if `--export-nb-as-py` is used.
-    - `--export-nb-as-py` (bool, flag): If set, converts Jupyter notebooks to `.py` format, excluding all output cells.
+    Args:
+        None
 
-    Example Usage:
+    Raises:
+        SystemExit: If argument parsing fails or if an error occurs during export.
+
+    Example:
         ```bash
         python cli.py --root-dir ./my_project --output-file project_export.txt --ignore-file .gitignore --include-file include.txt --export-nb-as-py
-        ```
-    """
+        """
     parser: argparse.ArgumentParser = argparse.ArgumentParser(description='Export folder contents.')
 
     parser.add_argument(
         '--root-dir',
         type=str,
         default='.',
-        help='Root directory to start exporting from'
+        help='Root directory to start exporting from.'
     )
     parser.add_argument(
         '--output-file',
         type=str,
         default='output.txt',
-        help='Output file name'
+        help='Name of the output text file.'
     )
     parser.add_argument(
         '--ignore-file',
         type=str,
         default='.gitignore',
-        help='Ignore file pattern list'
+        help='Path to the ignore file pattern list.'
     )
     parser.add_argument(
         '--include-file',
         type=str,
         default=None,
-        help='Include file pattern list'
+        help='Path to the include file pattern list.'
     )
     parser.add_argument(
         '--include-nb-outputs',
         action='store_true',
-        help='Include output cells in Jupyter notebooks (ignored if --export-nb-as-py is used)'
+        help='Include output cells in Jupyter notebooks (ignored if --export-nb-as-py is used).'
     )
     parser.add_argument(
         '--export-nb-as-py',
         action='store_true',
-        help='Convert Jupyter notebooks to .py format, excluding all output cells'
+        help='Convert Jupyter notebooks to .py format, excluding all output cells.'
     )
 
     args: argparse.Namespace = parser.parse_args()
