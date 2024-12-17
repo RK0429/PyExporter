@@ -119,7 +119,7 @@ class TestExporter(unittest.TestCase):
         # The notebook should appear, but outputs should not be included in the exported content.
         self.assertIn('test_notebook.ipynb', content)
         # Outputs should not be present, only a placeholder line (if any).
-        self.assertNotIn('Hello World', content)
+        self.assertNotIn('output_type', content)
         os.remove(output_file)
 
     def test_notebook_include_outputs(self):
@@ -137,7 +137,7 @@ class TestExporter(unittest.TestCase):
             content = f.read()
         # The notebook should appear and outputs should be present.
         self.assertIn('test_notebook.ipynb', content)
-        self.assertIn('Hello World', content)
+        self.assertIn('output_type', content)
         os.remove(output_file)
 
     def test_notebook_convert_to_py(self):
