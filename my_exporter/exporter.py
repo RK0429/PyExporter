@@ -6,6 +6,7 @@ from typing import Optional, Set, TextIO
 
 from pathspec import PathSpec
 from .ignore_handler import load_ignore_patterns, load_include_patterns
+from .logger import logger  # <-- Import the logger
 
 
 def strip_notebook_outputs(nb_content: str) -> str:
@@ -23,15 +24,18 @@ def strip_notebook_outputs(nb_content: str) -> str:
 
             stripped_nb = strip_notebook_outputs(original_nb_json)
     """
+    logger.debug("Stripping notebook outputs.")
     try:
         nb = json.loads(nb_content)
         for cell in nb.get('cells', []):
             if cell.get('cell_type') == 'code':
                 cell['outputs'] = []
                 cell['execution_count'] = None
+        logger.debug("Successfully stripped notebook outputs.")
         return json.dumps(nb, indent=2, ensure_ascii=False)
-    except json.JSONDecodeError:
-        # If JSON is invalid, return the original content
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse notebook JSON. Returning original content.")
+        logger.debug(f"JSONDecodeError: {e}")
         return nb_content
 
 
@@ -54,10 +58,12 @@ def convert_nb_to_py(nb_stripped_json: str) -> str:
 
             py_content = convert_nb_to_py(stripped_nb_json)
     """
+    logger.debug("Converting stripped notebook JSON to .py format.")
     try:
         nb = json.loads(nb_stripped_json)
-    except json.JSONDecodeError:
-        # If invalid JSON, return the original content as a fallback
+    except json.JSONDecodeError as e:
+        logger.warning("Failed to parse stripped notebook JSON. Returning original content.")
+        logger.debug(f"JSONDecodeError: {e}")
         return nb_stripped_json
 
     lines = []
@@ -83,6 +89,7 @@ def convert_nb_to_py(nb_stripped_json: str) -> str:
                 lines.append("# " + line.rstrip('\n'))
             lines.append("")
 
+    logger.debug("Successfully converted notebook to .py format.")
     return "\n".join(lines)
 
 
@@ -107,14 +114,18 @@ def should_include(
 
             include = should_include(file_path, ignore_spec, include_spec)
     """
+    logger.debug(f"Checking inclusion for path: {path}")
     if include_spec and not ignore_spec:
-        return include_spec.match_file(path)
+        result = include_spec.match_file(path)
     elif ignore_spec and not include_spec:
-        return not ignore_spec.match_file(path)
+        result = not ignore_spec.match_file(path)
     elif include_spec and ignore_spec:
-        return include_spec.match_file(path) or not ignore_spec.match_file(path)
+        result = include_spec.match_file(path) or not ignore_spec.match_file(path)
     else:
-        return True  # No specifications provided; include everything
+        result = True  # No specifications provided; include everything
+
+    logger.debug(f"Path '{path}' inclusion result: {result}")
+    return result
 
 
 def print_structure(
@@ -151,9 +162,11 @@ def print_structure(
         import sys
         out = sys.stdout
 
+    logger.debug(f"Listing directory: {root_dir}")
     try:
         entries = sorted(os.listdir(root_dir))
     except PermissionError:
+        logger.warning(f"Permission denied accessing directory: {root_dir}")
         out.write(prefix + "└── [Permission Denied]\n")
         return
 
@@ -169,6 +182,7 @@ def print_structure(
 
         # Exclude specific files from the directory structure
         if exclude_files and abs_path in exclude_files:
+            logger.debug(f"Excluding file from structure: {abs_path}")
             continue
 
         # Choose the connector symbol based on position
@@ -176,6 +190,7 @@ def print_structure(
 
         # Write directory or file name
         out.write(prefix + connector + entry + "\n")
+        logger.debug(f"Added to structure: {path}")
 
         if os.path.isdir(path):
             # Update prefix for child entries
@@ -228,91 +243,124 @@ def export_folder_contents(
                 convert_notebook_to_py=True
             )
     """
+    logger.info(f"Exporting folder contents from '{root_dir}' to '{output_file}'.")
+    logger.debug(f"Ignore file: {ignore_file}, Include file: {include_file}, "
+                 f"Exclude NB outputs: {exclude_notebook_outputs}, Convert NB: {convert_notebook_to_py}")
+
     # Check if the ignore_file exists; if not, assign None and issue a warning
     if ignore_file is not None and not os.path.isfile(ignore_file):
-        print(f"Warning: Ignore file '{ignore_file}' does not exist. Proceeding without ignore file.")
+        logger.warning(f"Ignore file '{ignore_file}' does not exist. Proceeding without ignore file.")
         ignore_file = None
 
     # Now safely attempt to load patterns, ignoring the file if it's None or doesn't exist
-    ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
-    include_spec = load_include_patterns(include_file) if include_file else None
+    try:
+        ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
+        include_spec = load_include_patterns(include_file) if include_file else None
+        logger.debug("Loaded ignore and include patterns successfully.")
+    except Exception as e:
+        logger.exception(f"Failed to load ignore/include patterns: ${e}")
+        raise
 
     # Prepare a set of absolute paths to exclude from the directory structure and file contents
     exclude_files: Set[str] = set()
     if ignore_file:
         exclude_files.add(os.path.abspath(ignore_file))
+        logger.debug(f"Excluding ignore file from structure: {os.path.abspath(ignore_file)}")
     if include_file:
         exclude_files.add(os.path.abspath(include_file))
+        logger.debug(f"Excluding include file from structure: {os.path.abspath(include_file)}")
 
-    with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
-        # Print the directory structure header
-        out.write("================\n")
-        out.write("DIRECTORY STRUCTURE\n")
-        out.write("================\n\n")
+    try:
+        with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
+            logger.debug(f"Opened output file '{output_file}' for writing.")
 
-        # Print the directory structure, excluding ignore_file and include_file
-        print_structure(
-            root_dir,
-            out=out,
-            ignore_spec=ignore_spec,
-            include_spec=include_spec,
-            exclude_files=exclude_files  # Pass the set of files to exclude
-        )
+            # Print the directory structure header
+            out.write("================\n")
+            out.write("DIRECTORY STRUCTURE\n")
+            out.write("================\n\n")
+            logger.debug("Writing directory structure header.")
 
-        out.write("\n")
-        # Print the file contents header
-        out.write("================\n")
-        out.write("FILE CONTENTS\n")
-        out.write("================\n\n")
+            # Print the directory structure, excluding ignore_file and include_file
+            print_structure(
+                root_dir,
+                out=out,
+                ignore_spec=ignore_spec,
+                include_spec=include_spec,
+                exclude_files=exclude_files  # Pass the set of files to exclude
+            )
+            logger.debug("Directory structure printed successfully.")
 
-        # Now, write the file contents
-        for root, dirs, files in os.walk(root_dir):
-            # Modify dirs in-place based on include and ignore specifications
-            dirs[:] = [
-                d for d in dirs
-                if should_include(os.path.join(root, d), ignore_spec, include_spec)
-            ]
+            out.write("\n")
+            # Print the file contents header
+            out.write("================\n")
+            out.write("FILE CONTENTS\n")
+            out.write("================\n\n")
+            logger.debug("Writing file contents header.")
 
-            for filename in files:
-                filepath = os.path.join(root, filename)
-                abs_filepath = os.path.abspath(filepath)
+            # Now, write the file contents
+            for root, dirs, files in os.walk(root_dir):
+                # Modify dirs in-place based on include and ignore specifications
+                dirs[:] = [
+                    d for d in dirs
+                    if should_include(os.path.join(root, d), ignore_spec, include_spec)
+                ]
+                logger.debug(f"Walking through directory: {root}")
 
-                # Skip the ignore and include files themselves so they don't appear in output
-                if ignore_file and abs_filepath == os.path.abspath(ignore_file):
-                    continue
-                if include_file and abs_filepath == os.path.abspath(include_file):
-                    continue
+                for filename in files:
+                    filepath = os.path.join(root, filename)
+                    abs_filepath = os.path.abspath(filepath)
 
-                if not should_include(filepath, ignore_spec, include_spec):
-                    continue  # Skip files that should not be included
+                    # Skip the ignore and include files themselves so they don't appear in output
+                    if ignore_file and abs_filepath == os.path.abspath(ignore_file):
+                        logger.debug(f"Skipping ignore file: {abs_filepath}")
+                        continue
+                    if include_file and abs_filepath == os.path.abspath(include_file):
+                        logger.debug(f"Skipping include file: {abs_filepath}")
+                        continue
 
-                relpath = os.path.relpath(filepath, start=root_dir)
+                    if not should_include(filepath, ignore_spec, include_spec):
+                        logger.debug(f"Excluding file based on patterns: {filepath}")
+                        continue  # Skip files that should not be included
 
-                # Print the file path with '===' on both sides
-                out.write(f"==={relpath}===\n")
+                    relpath = os.path.relpath(filepath, start=root_dir)
+                    logger.debug(f"Processing file: {filepath} (Relative path: {relpath})")
 
-                # Write the file content
-                try:
-                    if filename.endswith('.ipynb'):
-                        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-                            nb_content = f.read()
-                        if convert_notebook_to_py:
-                            # When converting to .py, always strip outputs
-                            stripped_content = strip_notebook_outputs(nb_content)
-                            py_content = convert_nb_to_py(stripped_content)
-                            out.write(py_content)
-                        else:
-                            if exclude_notebook_outputs:
-                                # Exclude outputs by stripping them
+                    # Print the file path with '===' on both sides
+                    out.write(f"==={relpath}===\n")
+
+                    # Write the file content
+                    try:
+                        if filename.endswith('.ipynb'):
+                            logger.debug(f"Handling Jupyter notebook: {filepath}")
+                            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                                nb_content = f.read()
+                            if convert_notebook_to_py:
+                                logger.debug("Converting notebook to .py format.")
+                                # When converting to .py, always strip outputs
                                 stripped_content = strip_notebook_outputs(nb_content)
-                                out.write(stripped_content)
+                                py_content = convert_nb_to_py(stripped_content)
+                                out.write(py_content)
                             else:
-                                # Include original notebook content with outputs
-                                out.write(nb_content)
-                    else:
-                        # Regular files
-                        with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
-                            out.write(f.read())
-                except Exception as e:
-                    out.write(f"[Non-text or unreadable content: {e}]")
-                out.write("\n\n")
+                                if exclude_notebook_outputs:
+                                    logger.debug("Stripping notebook outputs.")
+                                    # Exclude outputs by stripping them
+                                    stripped_content = strip_notebook_outputs(nb_content)
+                                    out.write(stripped_content)
+                                else:
+                                    logger.debug("Including notebook outputs.")
+                                    # Include original notebook content with outputs
+                                    out.write(nb_content)
+                        else:
+                            # Regular files
+                            logger.debug(f"Reading regular file: {filepath}")
+                            with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
+                                out.write(f.read())
+                    except Exception as e:
+                        logger.error(f"Failed to read file '{filepath}': {e}")
+                        out.write(f"[Non-text or unreadable content: {e}]")
+                    out.write("\n\n")
+    except IOError as e:
+        logger.exception(f"Failed to write to output file '{output_file}': {e}")
+        raise
+    else:
+        logger.info(f"Folder contents successfully exported to '{output_file}'.")
