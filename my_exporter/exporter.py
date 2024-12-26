@@ -258,7 +258,7 @@ def export_folder_contents(
         include_spec = load_include_patterns(include_file) if include_file else None
         logger.debug("Loaded ignore and include patterns successfully.")
     except Exception as e:
-        logger.exception(f"Failed to load ignore/include patterns: ${e}")
+        logger.exception(f"Failed to load ignore/include patterns: {e}")
         raise
 
     # Prepare a set of absolute paths to exclude from the directory structure and file contents
