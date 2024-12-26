@@ -115,12 +115,17 @@ def should_include(
             include = should_include(file_path, ignore_spec, include_spec)
     """
     logger.debug(f"Checking inclusion for path: {path}")
+
+    # Normalize path to use forward slashes for consistent matching across OSes
+    normalized_path = path.replace("\\", "/")
+    logger.debug(f"Normalized path for matching: {normalized_path}")
+
     if include_spec and not ignore_spec:
-        result = include_spec.match_file(path)
+        result = include_spec.match_file(normalized_path)
     elif ignore_spec and not include_spec:
-        result = not ignore_spec.match_file(path)
+        result = not ignore_spec.match_file(normalized_path)
     elif include_spec and ignore_spec:
-        result = include_spec.match_file(path) or not ignore_spec.match_file(path)
+        result = include_spec.match_file(normalized_path) or not ignore_spec.match_file(normalized_path)
     else:
         result = True  # No specifications provided; include everything
 
