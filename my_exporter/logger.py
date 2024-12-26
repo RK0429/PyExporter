@@ -3,7 +3,7 @@ import logging
 
 # Create a named logger to distinguish log messages (you can pick any name)
 logger = logging.getLogger("my_exporter")
-logger.setLevel(logging.INFO)  # Set the base logging level (DEBUG, INFO, WARNING, etc.)
+logger.setLevel(logging.DEBUG)  # Set the base logging level (DEBUG, INFO, WARNING, etc.)
 
 # Create a console handler that outputs to stdout
 console_handler = logging.StreamHandler()
