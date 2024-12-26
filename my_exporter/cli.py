@@ -104,7 +104,7 @@ def main() -> None:
             convert_notebook_to_py=args.export_nb_as_py
         )
     except Exception as e:
-        logger.exception(f"An error occurred during the export process: ${e}")
+        logger.exception(f"An error occurred during the export process: {e}")
         sys.exit(1)
     else:
         logger.info(f"Export completed successfully. Output file created at '{args.output_file}'.")
