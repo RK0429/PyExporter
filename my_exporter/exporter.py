@@ -88,6 +88,7 @@ def convert_nb_to_py(nb_stripped_json: str) -> str:
 
 def should_include(
     path: str,
+    root_dir: str,
     ignore_spec: Optional[PathSpec],
     include_spec: Optional[PathSpec]
 ) -> bool:
@@ -105,16 +106,20 @@ def should_include(
     Example:
         .. code-block:: python
 
-            include = should_include(file_path, ignore_spec, include_spec)
+            include = should_include(file_path, root_dir, ignore_spec, include_spec)
     """
+    # Convert path to something relative to the "real" root
+    rel_path = os.path.relpath(path, start=root_dir)
+
     if include_spec and not ignore_spec:
-        return include_spec.match_file(path)
+        return include_spec.match_file(rel_path)
     elif ignore_spec and not include_spec:
-        return not ignore_spec.match_file(path)
+        return not ignore_spec.match_file(rel_path)
     elif include_spec and ignore_spec:
-        return include_spec.match_file(path) or not ignore_spec.match_file(path)
+        # If it's matched by the include_spec or not matched by the ignore_spec, include it.
+        return include_spec.match_file(rel_path) or not ignore_spec.match_file(rel_path)
     else:
-        return True  # No specifications provided; include everything
+        return True
 
 
 def print_structure(
@@ -160,7 +165,7 @@ def print_structure(
     # Filter entries based on include and ignore specifications
     entries = [
         e for e in entries
-        if should_include(os.path.join(root_dir, e), ignore_spec, include_spec)
+        if should_include(os.path.join(root_dir, e), root_dir, ignore_spec, include_spec)
     ]
 
     for i, entry in enumerate(entries):
@@ -270,7 +275,7 @@ def export_folder_contents(
             # Modify dirs in-place based on include and ignore specifications
             dirs[:] = [
                 d for d in dirs
-                if should_include(os.path.join(root, d), ignore_spec, include_spec)
+                if should_include(os.path.join(root, d), root_dir, ignore_spec, include_spec)
             ]
 
             for filename in files:
@@ -283,7 +288,7 @@ def export_folder_contents(
                 if include_file and abs_filepath == os.path.abspath(include_file):
                     continue
 
-                if not should_include(filepath, ignore_spec, include_spec):
+                if not should_include(filepath, root_dir, ignore_spec, include_spec):
                     continue  # Skip files that should not be included
 
                 relpath = os.path.relpath(filepath, start=root_dir)
