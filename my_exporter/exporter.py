@@ -260,15 +260,15 @@ def export_folder_contents(
 
         # Log the compiled ignore patterns
         if ignore_spec:
-            logger.debug("Compiled Ignore Patterns:")
+            logger.info("Compiled Ignore Patterns:")
             for pat in ignore_spec.patterns:
-                logger.debug(f"Ignore pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
+                logger.info(f"Ignore pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
 
         # Log the compiled include patterns
         if include_spec:
-            logger.debug("Compiled Include Patterns:")
+            logger.info("Compiled Include Patterns:")
             for pat in include_spec.patterns:
-                logger.debug(f"Include pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
+                logger.info(f"Include pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
 
     except Exception as e:
         logger.exception(f"Failed to load ignore/include patterns: {e}")
