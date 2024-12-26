@@ -121,14 +121,18 @@ def should_include(
     logger.debug(f"Normalized path for matching: {normalized_path}")
 
     if include_spec and not ignore_spec:
+        # Only include_spec is present
         result = include_spec.match_file(normalized_path)
     elif ignore_spec and not include_spec:
+        # Only ignore_spec is present
         result = not ignore_spec.match_file(normalized_path)
     elif include_spec and ignore_spec:
-        # Included if it matches the include pattern OR it doesn't match the ignore pattern
+        # The path is included if it matches the include pattern OR
+        # if it doesn't match the ignore pattern.
         result = include_spec.match_file(normalized_path) or not ignore_spec.match_file(normalized_path)
     else:
-        result = True  # No specifications provided; include everything
+        # No specifications provided; include everything
+        result = True
 
     logger.debug(f"Path '{path}' inclusion result: {result}")
     return result
@@ -144,6 +148,9 @@ def has_included_content(
     Recursively check if 'dir_path' contains at least one file (or subdirectory)
     that should be included. If it contains none, return False.
 
+    This version allows a child directory to be included even if the parent
+    directory is ignored, so long as it is "rescued" by an include pattern.
+
     Args:
         dir_path (str): The directory path to check.
         ignore_spec (Optional[PathSpec]): Spec for ignored patterns.
@@ -153,10 +160,17 @@ def has_included_content(
     Returns:
         bool: True if the directory contains included content, False otherwise.
     """
-    # If the directory itself is explicitly ignored, no included content
+    # If the directory is ignored but not re-included by the include spec, skip it
     if ignore_spec and ignore_spec.match_file(dir_path):
-        logger.debug(f"Directory '{dir_path}' is explicitly ignored.")
-        return False
+        if not (include_spec and include_spec.match_file(dir_path)):
+            logger.debug(
+                f"Directory '{dir_path}' is explicitly ignored and not rescued by include spec."
+            )
+            return False
+        else:
+            logger.debug(
+                f"Directory '{dir_path}' is matched by ignore spec but rescued by include spec."
+            )
 
     try:
         entries = os.listdir(dir_path)
@@ -181,7 +195,6 @@ def has_included_content(
             if should_include(path, ignore_spec, include_spec):
                 return True
 
-    # No included content found in this directory
     logger.debug(f"No included content found in directory: {dir_path}")
     return False
 
@@ -198,7 +211,7 @@ def print_structure(
     Recursively print a "tree" structure of directories and files.
 
     This function will:
-      - Skip directories only if they're explicitly matched by ignore_spec.
+      - Skip directories only if they're explicitly matched by ignore_spec (and not rescued by include_spec).
       - Only include directories that contain at least one included file or subdirectory.
       - For files, apply the full should_include (ignore + include) logic.
       - Also exclude any files in `exclude_files`.
