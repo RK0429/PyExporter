@@ -30,6 +30,10 @@ def load_ignore_patterns(ignore_file: str = '.gitignore') -> PathSpec:
         with open(ignore_file, 'r', encoding='utf-8') as f:
             lines = f.read().splitlines()
         logger.debug(f"Read {len(lines)} lines from '{ignore_file}'.")
+
+        # Log the raw ignore patterns
+        logger.debug(f"Ignore file patterns: {lines}")
+
     except FileNotFoundError as e:
         logger.error(f"Ignore file '{ignore_file}' not found. {e}")
         raise
@@ -40,6 +44,10 @@ def load_ignore_patterns(ignore_file: str = '.gitignore') -> PathSpec:
     try:
         spec = PathSpec.from_lines('gitwildmatch', lines)
         logger.debug("Compiled ignore patterns into PathSpec.")
+
+        # Log each compiled ignore pattern
+        for pat in spec.patterns:
+            logger.debug(f"Ignore pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
     except Exception as e:
         logger.exception(f"Failed to compile ignore patterns from '{ignore_file}': {e}")
         raise
@@ -74,6 +82,10 @@ def load_include_patterns(include_file: str) -> PathSpec:
         with open(include_file, 'r', encoding='utf-8') as f:
             lines = f.read().splitlines()
         logger.debug(f"Read {len(lines)} lines from '{include_file}'.")
+
+        # Log the raw include patterns
+        logger.debug(f"Include file patterns: {lines}")
+
     except FileNotFoundError as e:
         logger.error(f"Include file '{include_file}' not found: {e}")
         raise
@@ -84,6 +96,10 @@ def load_include_patterns(include_file: str) -> PathSpec:
     try:
         spec = PathSpec.from_lines('gitwildmatch', lines)
         logger.debug("Compiled include patterns into PathSpec.")
+
+        # Log each compiled include pattern
+        for pat in spec.patterns:
+            logger.debug(f"Include pattern -> text: '{pat.pattern}', regex: '{pat.regex}'")
     except Exception as e:
         logger.exception(f"Failed to compile include patterns from '{include_file}': {e}")
         raise
