@@ -134,6 +134,58 @@ def should_include(
     return result
 
 
+def has_included_content(
+    dir_path: str,
+    ignore_spec: Optional[PathSpec],
+    include_spec: Optional[PathSpec],
+    exclude_files: Optional[Set[str]]
+) -> bool:
+    """
+    Recursively check if 'dir_path' contains at least one file (or subdirectory)
+    that should be included. If it contains none, return False.
+
+    Args:
+        dir_path (str): The directory path to check.
+        ignore_spec (Optional[PathSpec]): Spec for ignored patterns.
+        include_spec (Optional[PathSpec]): Spec for included patterns.
+        exclude_files (Optional[Set[str]]): Set of absolute file paths to exclude.
+
+    Returns:
+        bool: True if the directory contains included content, False otherwise.
+    """
+    # If the directory itself is explicitly ignored, no included content
+    if ignore_spec and ignore_spec.match_file(dir_path):
+        logger.debug(f"Directory '{dir_path}' is explicitly ignored.")
+        return False
+
+    try:
+        entries = os.listdir(dir_path)
+    except PermissionError:
+        logger.warning(f"Permission denied accessing directory: {dir_path}")
+        return False
+
+    for entry in entries:
+        path = os.path.join(dir_path, entry)
+        abs_path = os.path.abspath(path)
+
+        if os.path.isdir(path):
+            # Recurse into subdirectories
+            if has_included_content(path, ignore_spec, include_spec, exclude_files):
+                return True
+        else:
+            # Skip excluded files
+            if exclude_files and abs_path in exclude_files:
+                continue
+
+            # Check if the file is included
+            if should_include(path, ignore_spec, include_spec):
+                return True
+
+    # No included content found in this directory
+    logger.debug(f"No included content found in directory: {dir_path}")
+    return False
+
+
 def print_structure(
     root_dir: str = '.',
     out: Optional[TextIO] = None,
@@ -147,6 +199,7 @@ def print_structure(
 
     This function will:
       - Skip directories only if they're explicitly matched by ignore_spec.
+      - Only include directories that contain at least one included file or subdirectory.
       - For files, apply the full should_include (ignore + include) logic.
       - Also exclude any files in `exclude_files`.
 
@@ -175,31 +228,27 @@ def print_structure(
         out.write(prefix + "└── [Permission Denied]\n")
         return
 
-    # Separate directories from files so we only skip a directory if it's explicitly ignored
+    # Separate directories from files to handle them differently
     dirs = []
     files = []
     for entry in all_entries:
         path = os.path.join(root_dir, entry)
         abs_path = os.path.abspath(path)
 
-        # 1) If it's a directory
+        # Handle directories
         if os.path.isdir(path):
-            # Skip this directory if it's explicitly matched by the ignore spec
-            if ignore_spec and ignore_spec.match_file(path):
-                logger.debug(f"Skipping directory ignored by ignore spec: {path}")
-                continue
-            # Otherwise, keep it so we can descend into it
-            dirs.append(entry)
+            # Only include the directory if it has included content
+            if has_included_content(path, ignore_spec, include_spec, exclude_files):
+                dirs.append(entry)
         else:
-            # 2) It's a file; skip if in exclude_files
+            # Handle files
             if exclude_files and abs_path in exclude_files:
                 logger.debug(f"Excluding file from structure: {abs_path}")
                 continue
-            # Also apply the full should_include check to files
             if should_include(path, ignore_spec, include_spec):
                 files.append(entry)
 
-    # Combine back into a single list for printing in alphabetical order:
+    # Combine directories and files, sorted alphabetically
     combined = sorted(dirs) + sorted(files)
 
     for i, entry in enumerate(combined):
@@ -210,9 +259,9 @@ def print_structure(
         out.write(prefix + connector + entry)
         logger.debug(f"Added to structure: {path}")
 
-        # If it's a directory, print a slash (optional, for clarity) and recurse
         if entry in dirs:
             out.write("/\n")
+            # Update the prefix for child entries
             new_prefix = prefix + ("    " if is_last else "│   ")
             print_structure(
                 path,
@@ -309,13 +358,12 @@ def export_folder_contents(
         with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
             logger.debug(f"Opened output file '{output_file}' for writing.")
 
-            # Print directory structure header
+            # 1) Print the directory structure
             out.write("================\n")
             out.write("DIRECTORY STRUCTURE\n")
             out.write("================\n\n")
             logger.debug("Writing directory structure header.")
 
-            # Print the directory structure (showing which files/dirs exist)
             print_structure(
                 root_dir,
                 out=out,
@@ -326,13 +374,13 @@ def export_folder_contents(
             logger.debug("Directory structure printed successfully.")
 
             out.write("\n")
-            # Print the file contents header
+            # 2) Print the file contents
             out.write("================\n")
             out.write("FILE CONTENTS\n")
             out.write("================\n\n")
             logger.debug("Writing file contents header.")
 
-            # Now, write the file contents
+            # Walk the directory tree, but only prune directories explicitly ignored
             for root, dirs, files in os.walk(root_dir):
                 # 1) Prune directories that are explicitly matched by the ignore spec
                 if ignore_spec:
@@ -366,7 +414,6 @@ def export_folder_contents(
 
                     # Write the file content
                     try:
-                        # If it's a notebook, handle accordingly
                         if filename.endswith('.ipynb'):
                             logger.debug(f"Handling Jupyter notebook: {filepath}")
                             with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
