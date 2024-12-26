@@ -161,3 +161,4 @@ cython_debug/
 
 output.txt
 .git
+.my_exporter_include
