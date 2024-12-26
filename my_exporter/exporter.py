@@ -125,6 +125,7 @@ def should_include(
     elif ignore_spec and not include_spec:
         result = not ignore_spec.match_file(normalized_path)
     elif include_spec and ignore_spec:
+        # Included if it matches the include pattern OR it doesn't match the ignore pattern
         result = include_spec.match_file(normalized_path) or not ignore_spec.match_file(normalized_path)
     else:
         result = True  # No specifications provided; include everything
@@ -144,19 +145,18 @@ def print_structure(
     """
     Recursively print a "tree" structure of directories and files.
 
-    This function filters out ignored files/directories using the provided specifications
-    and excludes specific files if provided.
+    This function will:
+      - Skip directories only if they're explicitly matched by ignore_spec.
+      - For files, apply the full should_include (ignore + include) logic.
+      - Also exclude any files in `exclude_files`.
 
     Args:
         root_dir (str, optional): The directory to print the structure of. Defaults to '.'.
-        out (Optional[TextIO], optional): The file object to write the output to. Defaults to standard output.
+        out (Optional[TextIO], optional): The file object to write the output to. Defaults to sys.stdout.
         prefix (str, optional): The prefix string for the current level (used for formatting). Defaults to ''.
         ignore_spec (Optional[PathSpec], optional): Spec for ignored patterns. Defaults to None.
         include_spec (Optional[PathSpec], optional): Spec for included patterns. Defaults to None.
-        exclude_files (Optional[Set[str]], optional): Set of absolute file paths to exclude from the structure. Defaults to None.
-
-    Raises:
-        None
+        exclude_files (Optional[Set[str]], optional): Set of absolute file paths to exclude. Defaults to None.
 
     Example:
         .. code-block:: python
@@ -169,40 +169,51 @@ def print_structure(
 
     logger.debug(f"Listing directory: {root_dir}")
     try:
-        entries = sorted(os.listdir(root_dir))
+        all_entries = sorted(os.listdir(root_dir))
     except PermissionError:
         logger.warning(f"Permission denied accessing directory: {root_dir}")
         out.write(prefix + "└── [Permission Denied]\n")
         return
 
-    # Filter entries based on include and ignore specifications
-    entries = [
-        e for e in entries
-        if should_include(os.path.join(root_dir, e), ignore_spec, include_spec)
-    ]
-
-    for i, entry in enumerate(entries):
+    # Separate directories from files so we only skip a directory if it's explicitly ignored
+    dirs = []
+    files = []
+    for entry in all_entries:
         path = os.path.join(root_dir, entry)
         abs_path = os.path.abspath(path)
 
-        # Exclude specific files from the directory structure
-        if exclude_files and abs_path in exclude_files:
-            logger.debug(f"Excluding file from structure: {abs_path}")
-            continue
+        # 1) If it's a directory
+        if os.path.isdir(path):
+            # Skip this directory if it's explicitly matched by the ignore spec
+            if ignore_spec and ignore_spec.match_file(path):
+                logger.debug(f"Skipping directory ignored by ignore spec: {path}")
+                continue
+            # Otherwise, keep it so we can descend into it
+            dirs.append(entry)
+        else:
+            # 2) It's a file; skip if in exclude_files
+            if exclude_files and abs_path in exclude_files:
+                logger.debug(f"Excluding file from structure: {abs_path}")
+                continue
+            # Also apply the full should_include check to files
+            if should_include(path, ignore_spec, include_spec):
+                files.append(entry)
 
-        # Choose the connector symbol based on position
-        connector = '├── ' if i < len(entries) - 1 else '└── '
+    # Combine back into a single list for printing in alphabetical order:
+    combined = sorted(dirs) + sorted(files)
 
-        # Write directory or file name
-        out.write(prefix + connector + entry + "\n")
+    for i, entry in enumerate(combined):
+        path = os.path.join(root_dir, entry)
+        is_last = (i == len(combined) - 1)
+        connector = '└── ' if is_last else '├── '
+
+        out.write(prefix + connector + entry)
         logger.debug(f"Added to structure: {path}")
 
-        if os.path.isdir(path):
-            # Update prefix for child entries
-            if i < len(entries) - 1:
-                new_prefix = prefix + "│   "
-            else:
-                new_prefix = prefix + "    "
+        # If it's a directory, print a slash (optional, for clarity) and recurse
+        if entry in dirs:
+            out.write("/\n")
+            new_prefix = prefix + ("    " if is_last else "│   ")
             print_structure(
                 path,
                 out=out,
@@ -211,6 +222,9 @@ def print_structure(
                 include_spec=include_spec,
                 exclude_files=exclude_files
             )
+        else:
+            # It's a file, just finish the line
+            out.write("\n")
 
 
 def export_folder_contents(
@@ -249,8 +263,10 @@ def export_folder_contents(
             )
     """
     logger.info(f"Exporting folder contents from '{root_dir}' to '{output_file}'.")
-    logger.debug(f"Ignore file: {ignore_file}, Include file: {include_file}, "
-                 f"Exclude NB outputs: {exclude_notebook_outputs}, Convert NB: {convert_notebook_to_py}")
+    logger.debug(
+        f"Ignore file: {ignore_file}, Include file: {include_file}, "
+        f"Exclude NB outputs: {exclude_notebook_outputs}, Convert NB: {convert_notebook_to_py}"
+    )
 
     # Check if the ignore_file exists; if not, assign None and issue a warning
     if ignore_file is not None and not os.path.isfile(ignore_file):
@@ -259,6 +275,7 @@ def export_folder_contents(
 
     # Now safely attempt to load patterns, ignoring the file if it's None or doesn't exist
     try:
+        # Load specs (may be None if file not found or not given)
         ignore_spec = load_ignore_patterns(ignore_file) if ignore_file else None
         include_spec = load_include_patterns(include_file) if include_file else None
         logger.debug("Loaded ignore and include patterns successfully.")
@@ -279,7 +296,7 @@ def export_folder_contents(
         logger.exception(f"Failed to load ignore/include patterns: {e}")
         raise
 
-    # Prepare a set of absolute paths to exclude from the directory structure and file contents
+    # Prepare a set of absolute paths to exclude from the directory structure and from file contents
     exclude_files: Set[str] = set()
     if ignore_file:
         exclude_files.add(os.path.abspath(ignore_file))
@@ -292,19 +309,19 @@ def export_folder_contents(
         with open(output_file, 'w', encoding='utf-8', errors='replace') as out:
             logger.debug(f"Opened output file '{output_file}' for writing.")
 
-            # Print the directory structure header
+            # Print directory structure header
             out.write("================\n")
             out.write("DIRECTORY STRUCTURE\n")
             out.write("================\n\n")
             logger.debug("Writing directory structure header.")
 
-            # Print the directory structure, excluding ignore_file and include_file
+            # Print the directory structure (showing which files/dirs exist)
             print_structure(
                 root_dir,
                 out=out,
                 ignore_spec=ignore_spec,
                 include_spec=include_spec,
-                exclude_files=exclude_files  # Pass the set of files to exclude
+                exclude_files=exclude_files
             )
             logger.debug("Directory structure printed successfully.")
 
@@ -317,37 +334,39 @@ def export_folder_contents(
 
             # Now, write the file contents
             for root, dirs, files in os.walk(root_dir):
-                # Modify dirs in-place based on include and ignore specifications
-                dirs[:] = [
-                    d for d in dirs
-                    if should_include(os.path.join(root, d), ignore_spec, include_spec)
-                ]
+                # 1) Prune directories that are explicitly matched by the ignore spec
+                if ignore_spec:
+                    dirs[:] = [
+                        d for d in dirs
+                        if not ignore_spec.match_file(os.path.join(root, d))
+                    ]
+
                 logger.debug(f"Walking through directory: {root}")
 
+                # 2) Handle each file, applying full should_include
                 for filename in files:
                     filepath = os.path.join(root, filename)
                     abs_filepath = os.path.abspath(filepath)
 
-                    # Skip the ignore and include files themselves so they don't appear in output
-                    if ignore_file and abs_filepath == os.path.abspath(ignore_file):
-                        logger.debug(f"Skipping ignore file: {abs_filepath}")
-                        continue
-                    if include_file and abs_filepath == os.path.abspath(include_file):
-                        logger.debug(f"Skipping include file: {abs_filepath}")
+                    # Skip if it's the ignore or include file
+                    if abs_filepath in exclude_files:
+                        logger.debug(f"Skipping special file: {abs_filepath}")
                         continue
 
+                    # Now do a normal should_include check for files
                     if not should_include(filepath, ignore_spec, include_spec):
                         logger.debug(f"Excluding file based on patterns: {filepath}")
-                        continue  # Skip files that should not be included
+                        continue
 
                     relpath = os.path.relpath(filepath, start=root_dir)
                     logger.debug(f"Processing file: {filepath} (Relative path: {relpath})")
 
-                    # Print the file path with '===' on both sides
+                    # Print a header for this file's contents
                     out.write(f"==={relpath}===\n")
 
                     # Write the file content
                     try:
+                        # If it's a notebook, handle accordingly
                         if filename.endswith('.ipynb'):
                             logger.debug(f"Handling Jupyter notebook: {filepath}")
                             with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
@@ -369,13 +388,15 @@ def export_folder_contents(
                                     # Include original notebook content with outputs
                                     out.write(nb_content)
                         else:
-                            # Regular files
+                            # Regular file
                             logger.debug(f"Reading regular file: {filepath}")
                             with open(filepath, 'r', encoding='utf-8', errors='replace') as f:
                                 out.write(f.read())
                     except Exception as e:
                         logger.error(f"Failed to read file '{filepath}': {e}")
                         out.write(f"[Non-text or unreadable content: {e}]")
+
+                    # Blank line after each file
                     out.write("\n\n")
     except IOError as e:
         logger.exception(f"Failed to write to output file '{output_file}': {e}")
